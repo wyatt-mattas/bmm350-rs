@@ -1,6 +1,6 @@
 /// BMM350 register addresses and constant values
-pub struct Core_Register;
-impl Core_Register {
+pub struct CoreRegister;
+impl CoreRegister {
     /// Chip ID register address
     pub const CHIPID: u8 = 0x00;
     /// Error register address
@@ -13,8 +13,8 @@ impl Core_Register {
     pub const CMD_SOFT_RESET: u8 = 0xB6;
 }
 
-pub struct Data_Register;
-impl Data_Register {
+pub struct DataRegister;
+impl DataRegister {
     pub const BMM350_REG_MAG_X_XLSB: u8 = 0x31;
     pub const BMM350_REG_MAG_X_LSB: u8 = 0x32;
     pub const BMM350_REG_MAG_X_MSB: u8 = 0x33;
