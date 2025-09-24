@@ -342,6 +342,30 @@ where
         Ok(self_test_passed)
     }
 
+    fn self_test_entry_config(&mut self) -> Result<(), Error<E>> {
+        self.write_register(Register::PMU_CMD, Register::PMU_CMD_SUS)?;
+        self.delay.delay_us(30000);
+
+        self.set_odr_performance(DataRate::ODR100Hz, AverageNum::Avg2)?;
+        self.enable_axes(
+            AxisEnableDisable::Enable,
+            AxisEnableDisable::Enable,
+            AxisEnableDisable::Enable,
+        )?;
+
+        self.write_register(Register::PMU_CMD, Register::PMU_CMD_STATUS_0_FGR)?;
+        self.delay.delay_us(30000);
+
+        let pmu_status: PmuCmdStatus0 = self.read_pmu_cmd_status_0()?;
+
+        if pmu_status.pmu_cmd_value == Register::PMU_CMD_STATUS_0_FGR {
+            // TODO need to set to BR FAST
+            self.write_register(Register::PMU_CMD, Register::PMU_CMD_STATUS_0_BR)?;
+        }
+
+        Ok(())
+    }
+
     /// Set the output data rate and performance mode
     pub fn set_odr_performance(
         &mut self,
