@@ -8,8 +8,24 @@ use crate::{
     InterruptPolarity, MagConfig, Register,
 };
 #[cfg(feature = "defmt")]
-use defmt::{error, info};
-use embedded_hal_async::{delay::DelayNs, i2c::{self, Error, I2c}};
+use defmt::error;
+use embedded_hal_async::{delay::DelayNs, i2c::I2c};
+
+#[cfg(feature = "defmt")]
+fn log_bmm_error_code(err_value: u8) {
+    error!("BMM Error: {}", err_value);
+}
+
+#[cfg(not(feature = "defmt"))]
+fn log_bmm_error_code(_err_value: u8) {}
+
+#[cfg(feature = "defmt")]
+fn log_bmm_i2c_error<E>(_err: &E) {
+    error!("BMM I2C communication error");
+}
+
+#[cfg(not(feature = "defmt"))]
+fn log_bmm_i2c_error<E>(_err: &E) {}
 
 impl<I2C: embedded_hal_async::i2c::I2c, D> AsyncBmm350<I2C, D> where I2C: I2c, D: DelayNs{
     /// Create a new BMM350 device instance
@@ -34,16 +50,18 @@ impl<I2C: embedded_hal_async::i2c::I2c, D> AsyncBmm350<I2C, D> where I2C: I2c, D
 impl<I2C: embedded_hal_async::i2c::I2c, D> AsyncBmm350<I2C, D> where D: DelayNs{
     /// Initialize the device
     pub async fn init(&mut self) -> Result<i8, I2C::Error> {
-        self.delay.delay_us(3_000);
+        self.delay.delay_us(3_000).await;
+
         self.write_register_16bit(Register::CMD, Register::CMD_SOFT_RESET).await?;
-        self.delay.delay_us(24_000);
+
+        self.delay.delay_us(24_000).await;
 
         let err_result = self.read_register(Register::ERR_REG).await;
         let mut value_return = 0;
         match err_result{
             Ok(err_value)=>{
                 if err_value != 0 {
-                    info!("BMM Error: {}", err_value);
+                    log_bmm_error_code(err_value);
                     value_return = -1;
                 }
                 else{
@@ -51,6 +69,7 @@ impl<I2C: embedded_hal_async::i2c::I2c, D> AsyncBmm350<I2C, D> where D: DelayNs{
                 }
             }
             Err(i2c_error)=>{
+                log_bmm_i2c_error(&i2c_error);
                 return Err(i2c_error);
             }
         }
@@ -289,7 +308,7 @@ impl<I2C: embedded_hal_async::i2c::I2c, D> AsyncBmm350<I2C, D> where D: DelayNs{
             _ => {}
         }
 
-        self.delay.delay_us(delay_us);
+        self.delay.delay_us(delay_us).await;
 
         Ok(())
     }
@@ -407,7 +426,7 @@ impl<I2C: embedded_hal_async::i2c::I2c, D> AsyncBmm350<I2C, D> where D: DelayNs{
         self.write_register(Register::PMU_CMD_AGGR_SET, new_reg_data).await?;
         self.write_register(Register::PMU_CMD, Register::PMU_CMD_UPD_OAE).await?;
 
-        self.delay.delay_us(1_000);
+        self.delay.delay_us(1_000).await;
         Ok(())
     }
 
@@ -506,6 +525,7 @@ impl<I2C: embedded_hal_async::i2c::I2c, D> AsyncBmm350<I2C, D> where D: DelayNs{
 
     async fn wait_for_data_ready(&mut self) -> Result<i8, I2C::Error> {
         let mut value_return = 0;
+        let mut max_count = 0;
         for _ in 0..100 {
             let status = self.get_interrupt_status().await;
             match status{
@@ -513,7 +533,10 @@ impl<I2C: embedded_hal_async::i2c::I2c, D> AsyncBmm350<I2C, D> where D: DelayNs{
                     return Ok(value_return)
                 }
                 Err(i2c_error)=>{
-                    return Err(i2c_error)
+                    if max_count == 100{
+                        return Err(i2c_error)
+                    }                    
+                    max_count = max_count + 1;
                 }
             }
         }
