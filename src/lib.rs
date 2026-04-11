@@ -44,10 +44,9 @@ pub struct Bmm350<DI, D> {
 }
 
 #[cfg(feature = "async")]
-pub struct AsyncBmm350<I2C, D> {
+pub struct AsyncBmm350<DI, D> {
     /// Communication interface (I2C or SPI)
-    i2c: I2C,
-    address: u8,
+    iface: DI,
     /// Delay provider
     delay: D,
     /// Current magnetometer range

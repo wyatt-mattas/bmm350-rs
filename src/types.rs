@@ -1,7 +1,11 @@
 use core::fmt::Debug;
 
+#[cfg(feature = "defmt")]
+use defmt::Format;
+
 /// Possible errors that can occur when interacting with the BMM350
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(Format))]
 pub enum Error<E> {
     /// Communication error
     Comm(E),
