@@ -1,11 +1,21 @@
 #![no_std]
+#[cfg(feature = "sync")]
+pub mod interface;
+#[cfg(feature = "sync")]
+pub mod device;
+#[cfg(feature = "async")]
+pub mod async_interface;
+#[cfg(feature = "async")]
+pub use async_interface::*;
+#[cfg(feature = "async")]
+pub mod async_device;
+#[cfg(feature = "async")]
+pub use embedded_hal_async::i2c::*;
 
 /// BMM350 driver for Rust
 ///
 /// This module provides a high-level interface for interacting with the Bosch BMM350 magnetometer.
 /// It supports both I2C interfaces and allows for configuration of magnetometer settings.
-pub mod device;
-mod interface;
 mod registers;
 pub use registers::Register;
 mod types;
@@ -19,6 +29,7 @@ mod sensor_data;
 pub use sensor_data::*;
 
 /// Main struct representing the BMM350 device
+#[cfg(feature = "sync")]
 pub struct Bmm350<DI, D> {
     /// Communication interface (I2C or SPI)
     iface: DI,
@@ -31,6 +42,21 @@ pub struct Bmm350<DI, D> {
     /// Magnetometer compensation data
     mag_comp: MagCompensation,
 }
+
+#[cfg(feature = "async")]
+pub struct AsyncBmm350<DI, D> {
+    /// Communication interface (I2C or SPI)
+    iface: DI,
+    /// Delay provider
+    delay: D,
+    /// Current magnetometer range
+    mag_range: f32,
+    /// Variant ID
+    var_id: u8,
+    /// Magnetometer compensation data
+    mag_comp: MagCompensation,
+}
+
 
 /// Configuration for the magnetometer
 #[derive(Debug, Clone, Copy)]
